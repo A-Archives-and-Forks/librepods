@@ -1,0 +1,11 @@
+{
+    "__DEFAULT__": {
+        "28:2D:7F:C2:05:5B/P": {
+            "link_key": {
+                "authenticated": false,
+                "value": "5b93e59d3c94dce1413d35a3c6edda58"
+            },
+            "link_key_type": 4
+        }
+    }
+}

@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import socket
+import sounddevice as sd
+import struct
+import numpy as np
+
+# Audio settings (must match sender)
+SAMPLERATE = 48000
+CHANNELS = 2
+DTYPE = 'int16'
+
+# Network settings
+LISTEN_IP = "0.0.0.0"
+LISTEN_PORT = 50007
+
+def main():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((LISTEN_IP, LISTEN_PORT))
+    sock.listen(1)
+    print(f"Waiting for sender on {LISTEN_IP}:{LISTEN_PORT} ...")
+    conn, addr = sock.accept()
+    print(f"Sender connected from {addr}")
+
+    stream = sd.OutputStream(samplerate=SAMPLERATE, channels=CHANNELS,
+                             dtype=DTYPE, blocksize=1024)
+    stream.start()
+
+    try:
+        while True:
+            header = conn.recv(4)
+            if not header:
+                break
+            frames = struct.unpack("<I", header)[0]
+            bytes_to_read = frames * CHANNELS * np.dtype(DTYPE).itemsize
+            data = b''
+            while len(data) < bytes_to_read:
+                chunk = conn.recv(bytes_to_read - len(data))
+                if not chunk:
+                    break
+                data += chunk
+            if not data:
+                break
+
+            # Convert to numpy and reshape as (frames, channels)
+            audio = np.frombuffer(data, dtype=DTYPE)
+            audio = audio.reshape(-1, CHANNELS)
+
+            stream.write(audio)
+    except KeyboardInterrupt:
+        print("Stopping receiver.")
+    finally:
+        stream.stop()
+        stream.close()
+        conn.close()
+        sock.close()
+
+if __name__ == "__main__":
+    main()

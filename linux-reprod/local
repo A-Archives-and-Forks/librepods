@@ -1,0 +1,198 @@
+Service RecHandle: 0x10000
+Service Class ID List:
+  "PnP Information" (0x1200)
+Profile Descriptor List:
+  "PnP Information" (0x1200)
+    Version: 0x0103
+
+Service Name: Multi Profile
+Service RecHandle: 0x10001
+Service Class ID List:
+  "" (0x113b)
+Profile Descriptor List:
+  "" (0x113a)
+    Version: 0x0100
+
+Service Name: AVRCP CT
+Service RecHandle: 0x10002
+Service Class ID List:
+  "AV Remote" (0x110e)
+  "AV Remote Controller" (0x110f)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+    PSM: 23
+  "AVCTP" (0x0017)
+    uint16: 0x0103
+Profile Descriptor List:
+  "AV Remote" (0x110e)
+    Version: 0x0106
+
+Service Name: AVRCP TG
+Service RecHandle: 0x10003
+Service Class ID List:
+  "AV Remote Target" (0x110c)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+    PSM: 23
+  "AVCTP" (0x0017)
+    uint16: 0x0103
+Profile Descriptor List:
+  "AV Remote" (0x110e)
+    Version: 0x0105
+
+Service Name: SIM Access Server
+Service RecHandle: 0x10004
+Service Class ID List:
+  "SIM Access" (0x112d)
+  "Generic Telephony" (0x1204)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 8
+Profile Descriptor List:
+  "SIM Access" (0x112d)
+    Version: 0x0101
+
+Service Name: Message Notification
+Service RecHandle: 0x10005
+Service Class ID List:
+  "Message Access - MNS" (0x1133)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 17
+  "OBEX" (0x0008)
+Profile Descriptor List:
+  "Message Access" (0x1134)
+    Version: 0x0102
+
+Service Name: Message Access
+Service RecHandle: 0x10006
+Service Class ID List:
+  "Message Access - MAS" (0x1132)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 16
+  "OBEX" (0x0008)
+Profile Descriptor List:
+  "Message Access" (0x1134)
+    Version: 0x0100
+
+Service Name: Phone Book Access
+Service RecHandle: 0x10007
+Service Class ID List:
+  "Phonebook Access - PSE" (0x112f)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 15
+  "OBEX" (0x0008)
+Profile Descriptor List:
+  "Phonebook Access" (0x1130)
+    Version: 0x0101
+
+Service Name: Synchronization
+Service RecHandle: 0x10008
+Service Class ID List:
+  "IrMC Sync" (0x1104)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 14
+  "OBEX" (0x0008)
+Profile Descriptor List:
+  "IrMC Sync" (0x1104)
+    Version: 0x0100
+
+Service Name: File Transfer
+Service RecHandle: 0x10009
+Service Class ID List:
+  "OBEX File Transfer" (0x1106)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 10
+  "OBEX" (0x0008)
+Profile Descriptor List:
+  "OBEX File Transfer" (0x1106)
+    Version: 0x0102
+
+Service Name: Object Push
+Service RecHandle: 0x1000a
+Service Class ID List:
+  "OBEX Object Push" (0x1105)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 9
+  "OBEX" (0x0008)
+Profile Descriptor List:
+  "OBEX Object Push" (0x1105)
+    Version: 0x0102
+
+Service Name: Nokia OBEX PC Suite Services
+Service RecHandle: 0x1000b
+Service Class ID List:
+  UUID 128: 00005005-0000-1000-8000-0002ee000001
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 24
+  "OBEX" (0x0008)
+Profile Descriptor List:
+  "" (0x00005005-0000-1000-8000-0002ee000001)
+    Version: 0x0100
+
+Service Name: Hands-Free Voice gateway
+Service RecHandle: 0x1000c
+Service Class ID List:
+  "Handsfree Audio Gateway" (0x111f)
+  "Generic Audio" (0x1203)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 13
+Profile Descriptor List:
+  "Handsfree" (0x111e)
+    Version: 0x0107
+
+Service Name: Hands-Free unit
+Service RecHandle: 0x1000d
+Service Class ID List:
+  "Handsfree" (0x111e)
+  "Generic Audio" (0x1203)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+  "RFCOMM" (0x0003)
+    Channel: 7
+Profile Descriptor List:
+  "Handsfree" (0x111e)
+    Version: 0x0107
+
+Service Name: Audio Source
+Service RecHandle: 0x1000e
+Service Class ID List:
+  "Audio Source" (0x110a)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+    PSM: 25
+  "AVDTP" (0x0019)
+    uint16: 0x0103
+Profile Descriptor List:
+  "Advanced Audio" (0x110d)
+    Version: 0x0103
+
+Service Name: Audio Sink
+Service RecHandle: 0x1000f
+Service Class ID List:
+  "Audio Sink" (0x110b)
+Protocol Descriptor List:
+  "L2CAP" (0x0100)
+    PSM: 25
+  "AVDTP" (0x0019)
+    uint16: 0x0103
+Profile Descriptor List:
+  "Advanced Audio" (0x110d)
+    Version: 0x0103
+
