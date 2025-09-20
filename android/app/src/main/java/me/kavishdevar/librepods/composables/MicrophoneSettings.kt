@@ -21,14 +21,22 @@
 package me.kavishdevar.librepods.composables
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -37,27 +45,37 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
 import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.services.ServiceManager
 import me.kavishdevar.librepods.utils.AACPManager
@@ -79,8 +97,8 @@ fun MicrophoneSettings() {
         val micModeValue = service.aacpManager.controlCommandStatusList.find {
             it.identifier == AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE
         }?.value?.get(0) ?: 0x00.toByte()
-        
-        var selectedMode by remember { 
+
+        var selectedMode by remember {
             mutableStateOf(
                 when (micModeValue) {
                     0x00.toByte() -> "Automatic"
@@ -91,22 +109,27 @@ fun MicrophoneSettings() {
             )
         }
         var showDropdown by remember { mutableStateOf(false) }
-        
+        var touchOffset by remember { mutableStateOf<Offset?>(null) }
+        var boxPosition by remember { mutableStateOf(Offset.Zero) }
+        var lastDismissTime by remember { mutableLongStateOf(0L) }
+        val reopenThresholdMs = 250L
+
         val listener = object : AACPManager.ControlCommandListener {
-                override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
-                    if (AACPManager.Companion.ControlCommandIdentifiers.fromByte(controlCommand.identifier) == 
-                        AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE) {
-                        selectedMode = when (controlCommand.value.get(0)) {
-                            0x00.toByte() -> "Automatic"
-                            0x01.toByte() -> "Always Right"
-                            0x02.toByte() -> "Always Left"
-                            else -> "Automatic"
-                        }
-                        Log.d("MicrophoneSettings", "Microphone mode received: $selectedMode")
+            override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+                if (AACPManager.Companion.ControlCommandIdentifiers.fromByte(controlCommand.identifier) ==
+                    AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE
+                ) {
+                    selectedMode = when (controlCommand.value[0]) {
+                        0x00.toByte() -> "Automatic"
+                        0x01.toByte() -> "Always Right"
+                        0x02.toByte() -> "Always Left"
+                        else -> "Automatic"
                     }
+                    Log.d("MicrophoneSettings", "Microphone mode received: $selectedMode")
                 }
             }
-            
+        }
+
         LaunchedEffect(Unit) {
             service.aacpManager.registerControlCommandListener(
                 AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE,
@@ -123,11 +146,84 @@ fun MicrophoneSettings() {
             }
         }
 
+        val density = LocalDensity.current
+        val itemHeightPx = with(density) { 48.dp.toPx() }
+        var parentHoveredIndex by remember { mutableStateOf<Int?>(null) }
+        var parentDragActive by remember { mutableStateOf(false) }
+        val microphoneAutomaticText = stringResource(R.string.microphone_automatic)
+        val microphoneAlwaysRightText = stringResource(R.string.microphone_always_right)
+        val microphoneAlwaysLeftText = stringResource(R.string.microphone_always_left)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 12.dp, end = 12.dp)
-                .height(55.dp),
+                .height(55.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        val now = System.currentTimeMillis()
+                        if (showDropdown) {
+                            showDropdown = false
+                            lastDismissTime = now
+                        } else {
+                            if (now - lastDismissTime > reopenThresholdMs) {
+                                touchOffset = offset
+                                showDropdown = true
+                            }
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            val now = System.currentTimeMillis()
+                            touchOffset = offset
+                            if (!showDropdown && now - lastDismissTime > reopenThresholdMs) {
+                                showDropdown = true
+                            }
+                            lastDismissTime = now
+                            parentDragActive = true
+                            parentHoveredIndex = 0
+                        },
+                        onDrag = { change, _ ->
+                            val current = change.position
+                            val touch = touchOffset ?: current
+                            val posInPopupY = current.y - touch.y
+                            val idx = (posInPopupY / itemHeightPx).toInt()
+                            parentHoveredIndex = idx
+                        },
+                        onDragEnd = {
+                            parentDragActive = false
+                            parentHoveredIndex?.let { idx ->
+                                val options = listOf(
+                                    microphoneAutomaticText,
+                                    microphoneAlwaysRightText,
+                                    microphoneAlwaysLeftText
+                                )
+                                if (idx in options.indices) {
+                                    val option = options[idx]
+                                    selectedMode = option
+                                    showDropdown = false
+                                    lastDismissTime = System.currentTimeMillis()
+                                    val byteValue = when (option) {
+                                        options[0] -> 0x00
+                                        options[1] -> 0x01
+                                        options[2] -> 0x02
+                                        else -> 0x00
+                                    }
+                                    service.aacpManager.sendControlCommand(
+                                        AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE.value,
+                                        byteArrayOf(byteValue.toByte())
+                                    )
+                                }
+                            }
+                            parentHoveredIndex = null
+                        },
+                        onDragCancel = {
+                            parentDragActive = false
+                            parentHoveredIndex = null
+                        }
+                    )
+                },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -137,9 +233,12 @@ fun MicrophoneSettings() {
                 color = textColor,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
-            Box {
+            Box(
+                modifier = Modifier.onGloballyPositioned { coordinates ->
+                    boxPosition = coordinates.positionInParent()
+                }
+            ) {
                 Row(
-                    modifier = Modifier.clickable { showDropdown = true },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -154,44 +253,42 @@ fun MicrophoneSettings() {
                         tint = textColor.copy(alpha = 0.6f)
                     )
                 }
-                DropdownMenu(
+
+                val microphoneAutomaticText = stringResource(R.string.microphone_automatic)
+                val microphoneAlwaysRightText = stringResource(R.string.microphone_always_right)
+                val microphoneAlwaysLeftText = stringResource(R.string.microphone_always_left)
+
+                DragSelectableDropdown(
                     expanded = showDropdown,
-                    onDismissRequest = { showDropdown = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.microphone_automatic)) },
-                        onClick = {
-                            selectedMode = "Automatic"
-                            showDropdown = false
-                            service.aacpManager.sendControlCommand(
-                                AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE.value,
-                                byteArrayOf(0x00)
-                            )
+                    onDismissRequest = {
+                        showDropdown = false
+                        lastDismissTime = System.currentTimeMillis()
+                    },
+                    options = listOf(
+                        microphoneAutomaticText,
+                        microphoneAlwaysRightText,
+                        microphoneAlwaysLeftText
+                    ),
+                    selectedOption = selectedMode,
+                    touchOffset = touchOffset,
+                    boxPosition = boxPosition,
+                    externalHoveredIndex = parentHoveredIndex,
+                    externalDragActive = parentDragActive,
+                    onOptionSelected = { option ->
+                        selectedMode = option
+                        showDropdown = false
+                        val byteValue = when (option) {
+                            microphoneAutomaticText -> 0x00
+                            microphoneAlwaysRightText -> 0x01
+                            microphoneAlwaysLeftText -> 0x02
+                            else -> 0x00
                         }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.microphone_always_right)) },
-                        onClick = {
-                            selectedMode = "Always Right"
-                            showDropdown = false
-                            service.aacpManager.sendControlCommand(
-                                AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE.value,
-                                byteArrayOf(0x01)
-                            )
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.microphone_always_left)) },
-                        onClick = {
-                            selectedMode = "Always Left"
-                            showDropdown = false
-                            service.aacpManager.sendControlCommand(
-                                AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE.value,
-                                byteArrayOf(0x02)
-                            )
-                        }
-                    )
-                }
+                        service.aacpManager.sendControlCommand(
+                            AACPManager.Companion.ControlCommandIdentifiers.MIC_MODE.value,
+                            byteArrayOf(byteValue.toByte())
+                        )
+                    }
+                )
             }
         }
     }
@@ -201,4 +298,155 @@ fun MicrophoneSettings() {
 @Composable
 fun MicrophoneSettingsPreview() {
     MicrophoneSettings()
+}
+
+@Composable
+fun DragSelectableDropdown(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    options: List<String>,
+    selectedOption: String,
+    touchOffset: Offset?,
+    boxPosition: Offset,
+    onOptionSelected: (String) -> Unit,
+    externalHoveredIndex: Int? = null,
+    externalDragActive: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    if (expanded) {
+        val relativeOffset = touchOffset?.let { it - boxPosition } ?: Offset.Zero
+        Popup(
+            offset = IntOffset(relativeOffset.x.toInt(), relativeOffset.y.toInt()),
+            onDismissRequest = onDismissRequest
+        ) {
+            AnimatedVisibility(
+                visible = true,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+            ) {
+                Card(
+                    modifier = modifier
+                        .padding(8.dp)
+                        .width(300.dp)
+                        .background(
+                            if (isSystemInDarkTheme()) Color(0xFF2C2C2E) else Color(0xFFFFFFFF)
+                        )
+                        .clip(RoundedCornerShape(8.dp)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    var hoveredIndex by remember { mutableStateOf<Int?>(null) }
+                    val itemHeight = 48.dp
+
+                    var popupSize by remember { mutableStateOf(IntSize(0, 0)) }
+                    var lastDragPosition by remember { mutableStateOf<Offset?>(null) }
+
+                    LaunchedEffect(externalHoveredIndex, externalDragActive) {
+                        if (externalDragActive) {
+                            hoveredIndex = externalHoveredIndex
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .onGloballyPositioned { coordinates ->
+                                popupSize = coordinates.size
+                            }
+                            .pointerInput(popupSize) {
+                                detectDragGestures(
+                                    onDragStart = { offset ->
+                                        hoveredIndex = (offset.y / itemHeight.toPx()).toInt()
+                                        lastDragPosition = offset
+                                    },
+                                    onDrag = { change, _ ->
+                                        val y = change.position.y
+                                        hoveredIndex = (y / itemHeight.toPx()).toInt()
+                                        lastDragPosition = change.position
+                                    },
+                                    onDragEnd = {
+                                        val pos = lastDragPosition
+                                        val withinBounds = pos != null &&
+                                            pos.x >= 0f && pos.y >= 0f &&
+                                            pos.x <= popupSize.width.toFloat() && pos.y <= popupSize.height.toFloat()
+
+                                        if (withinBounds) {
+                                            hoveredIndex?.let { idx ->
+                                                if (idx in options.indices) {
+                                                    onOptionSelected(options[idx])
+                                                }
+                                            }
+                                            onDismissRequest()
+                                        } else {
+                                            hoveredIndex = null
+                                        }
+                                    }
+                                )
+                            }
+                    ) {
+                        options.forEachIndexed { index, text ->
+                            val isHovered =
+                                if (externalDragActive && externalHoveredIndex != null) {
+                                    index == externalHoveredIndex
+                                } else {
+                                    index == hoveredIndex
+                                }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(itemHeight)
+                                    .background(
+                                        if (isHovered) (if (isSystemInDarkTheme()) Color(0xFF3A3A3C) else Color(
+                                            0xFFD1D1D6
+                                        )) else Color.Transparent
+                                    )
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {
+                                        onOptionSelected(text)
+                                        onDismissRequest()
+                                    }
+                                    .padding(horizontal = 12.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text,
+                                        color = if (isSystemInDarkTheme()) Color.White else Color.Black
+                                    )
+                                    Checkbox(
+                                        checked = text == selectedOption,
+                                        onCheckedChange = { onOptionSelected(text) },
+                                        colors = CheckboxDefaults.colors().copy(
+                                            checkedCheckmarkColor = Color(0xFF007AFF),
+                                            uncheckedCheckmarkColor = Color.Transparent,
+                                            checkedBoxColor = Color.Transparent,
+                                            uncheckedBoxColor = Color.Transparent,
+                                            checkedBorderColor = Color.Transparent,
+                                            uncheckedBorderColor = Color.Transparent,
+                                            disabledBorderColor = Color.Transparent,
+                                            disabledCheckedBoxColor = Color.Transparent,
+                                            disabledUncheckedBoxColor = Color.Transparent,
+                                            disabledUncheckedBorderColor = Color.Transparent
+                                        )
+                                    )
+                                }
+                            }
+
+                            if (index != options.lastIndex) {
+                                HorizontalDivider(
+                                    thickness = 1.5.dp,
+                                    color = Color(0x40888888),
+                                    modifier = Modifier.padding(start = 12.dp, end = 0.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

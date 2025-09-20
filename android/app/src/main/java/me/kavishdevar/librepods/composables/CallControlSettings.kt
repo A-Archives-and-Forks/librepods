@@ -22,36 +22,39 @@ package me.kavishdevar.librepods.composables
 
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -89,27 +92,55 @@ fun CallControlSettings() {
         val callControlEnabledValue = service.aacpManager.controlCommandStatusList.find {
             it.identifier == AACPManager.Companion.ControlCommandIdentifiers.CALL_MANAGEMENT_CONFIG
         }?.value ?: byteArrayOf(0x00, 0x03)
-        
-        var flipped by remember { mutableStateOf(callControlEnabledValue.contentEquals(byteArrayOf(0x00, 0x02))) }
-        var singlePressAction by remember { mutableStateOf(if (flipped) "Press Twice" else "Press Once") }
-        var doublePressAction by remember { mutableStateOf(if (flipped) "Press Once" else "Press Twice") }
+
+        val pressOnceText = stringResource(R.string.press_once)
+        val pressTwiceText = stringResource(R.string.press_twice)
+
+        var flipped by remember {
+            mutableStateOf(
+                callControlEnabledValue.contentEquals(
+                    byteArrayOf(
+                        0x00,
+                        0x02
+                    )
+                )
+            )
+        }
+        var singlePressAction by remember { mutableStateOf(if (flipped) pressTwiceText else pressOnceText) }
+        var doublePressAction by remember { mutableStateOf(if (flipped) pressOnceText else pressTwiceText) }
+
         var showSinglePressDropdown by remember { mutableStateOf(false) }
+        var touchOffsetSingle by remember { mutableStateOf<Offset?>(null) }
+        var boxPositionSingle by remember { mutableStateOf(Offset.Zero) }
+        var lastDismissTimeSingle by remember { mutableLongStateOf(0L) }
+        var parentHoveredIndexSingle by remember { mutableStateOf<Int?>(null) }
+        var parentDragActiveSingle by remember { mutableStateOf(false) }
+
         var showDoublePressDropdown by remember { mutableStateOf(false) }
+        var touchOffsetDouble by remember { mutableStateOf<Offset?>(null) }
+        var boxPositionDouble by remember { mutableStateOf(Offset.Zero) }
+        var lastDismissTimeDouble by remember { mutableLongStateOf(0L) }
+        var parentHoveredIndexDouble by remember { mutableStateOf<Int?>(null) }
+        var parentDragActiveDouble by remember { mutableStateOf(false) }
 
         LaunchedEffect(Unit) {
             val listener = object : AACPManager.ControlCommandListener {
                 override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
-                    if (AACPManager.Companion.ControlCommandIdentifiers.fromByte(controlCommand.identifier) == 
-                        AACPManager.Companion.ControlCommandIdentifiers.CALL_MANAGEMENT_CONFIG) {
+                    if (AACPManager.Companion.ControlCommandIdentifiers.fromByte(controlCommand.identifier) ==
+                        AACPManager.Companion.ControlCommandIdentifiers.CALL_MANAGEMENT_CONFIG
+                    ) {
                         val newFlipped = controlCommand.value.contentEquals(byteArrayOf(0x00, 0x02))
                         flipped = newFlipped
-                        singlePressAction = if (newFlipped) "Press Twice" else "Press Once"
-                        doublePressAction = if (newFlipped) "Press Once" else "Press Twice"
-                        Log.d("CallControlSettings", "Control command received, flipped: $newFlipped")
+                        singlePressAction = if (newFlipped) pressTwiceText else pressOnceText
+                        doublePressAction = if (newFlipped) pressOnceText else pressTwiceText
+                        Log.d(
+                            "CallControlSettings",
+                            "Control command received, flipped: $newFlipped"
+                        )
                     }
                 }
             }
-            
+
             service.aacpManager.registerControlCommandListener(
                 AACPManager.Companion.ControlCommandIdentifiers.CALL_MANAGEMENT_CONFIG,
                 listener
@@ -121,10 +152,12 @@ fun CallControlSettings() {
                 service.aacpManager.controlCommandListeners[AACPManager.Companion.ControlCommandIdentifiers.CALL_MANAGEMENT_CONFIG]?.clear()
             }
         }
-
         LaunchedEffect(flipped) {
             Log.d("CallControlSettings", "Call control flipped: $flipped")
         }
+
+        val density = LocalDensity.current
+        val itemHeightPx = with(density) { 48.dp.toPx() }
 
         Column(
             modifier = Modifier
@@ -161,7 +194,66 @@ fun CallControlSettings() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp)
-                    .height(50.dp),
+                    .height(50.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures { offset ->
+                            val now = System.currentTimeMillis()
+                            if (showSinglePressDropdown) {
+                                showSinglePressDropdown = false
+                                lastDismissTimeSingle = now
+                            } else {
+                                if (now - lastDismissTimeSingle > 250L) {
+                                    touchOffsetSingle = offset
+                                    showSinglePressDropdown = true
+                                }
+                            }
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { offset ->
+                                val now = System.currentTimeMillis()
+                                touchOffsetSingle = offset
+                                if (!showSinglePressDropdown && now - lastDismissTimeSingle > 250L) {
+                                    showSinglePressDropdown = true
+                                }
+                                lastDismissTimeSingle = now
+                                parentDragActiveSingle = true
+                                parentHoveredIndexSingle = 0
+                            },
+                            onDrag = { change, _ ->
+                                val current = change.position
+                                val touch = touchOffsetSingle ?: current
+                                val posInPopupY = current.y - touch.y
+                                val idx = (posInPopupY / itemHeightPx).toInt()
+                                parentHoveredIndexSingle = idx
+                            },
+                            onDragEnd = {
+                                parentDragActiveSingle = false
+                                parentHoveredIndexSingle?.let { idx ->
+                                    val options = listOf(pressOnceText, pressTwiceText)
+                                    if (idx in options.indices) {
+                                        val option = options[idx]
+                                        singlePressAction = option
+                                        doublePressAction =
+                                            if (option == pressOnceText) pressTwiceText else pressOnceText
+                                        showSinglePressDropdown = false
+                                        lastDismissTimeSingle = System.currentTimeMillis()
+                                        val bytes = if (option == pressOnceText) byteArrayOf(
+                                            0x00,
+                                            0x03
+                                        ) else byteArrayOf(0x00, 0x02)
+                                        service.aacpManager.sendControlCommand(0x24, bytes)
+                                    }
+                                }
+                                parentHoveredIndexSingle = null
+                            },
+                            onDragCancel = {
+                                parentDragActiveSingle = false
+                                parentHoveredIndexSingle = null
+                            }
+                        )
+                    },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -171,13 +263,16 @@ fun CallControlSettings() {
                     color = textColor,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                Box {
+                Box(
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        boxPositionSingle = coordinates.positionInParent()
+                    }
+                ) {
                     Row(
-                        modifier = Modifier.clickable { showSinglePressDropdown = true },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (singlePressAction == "Press Once") stringResource(R.string.press_once) else stringResource(R.string.press_twice),
+                            text = singlePressAction,
                             fontSize = 16.sp,
                             color = textColor.copy(alpha = 0.8f)
                         )
@@ -188,29 +283,31 @@ fun CallControlSettings() {
                             tint = textColor.copy(alpha = 0.6f)
                         )
                     }
-                    DropdownMenu(
+
+                    DragSelectableDropdown(
                         expanded = showSinglePressDropdown,
-                        onDismissRequest = { showSinglePressDropdown = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.press_once)) },
-                            onClick = {
-                                singlePressAction = "Press Once"
-                                doublePressAction = "Press Twice"
-                                showSinglePressDropdown = false
-                                service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x03))
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.press_twice)) },
-                            onClick = {
-                                singlePressAction = "Press Twice"
-                                doublePressAction = "Press Once"
-                                showSinglePressDropdown = false
-                                service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x02))
-                            }
-                        )
-                    }
+                        onDismissRequest = {
+                            showSinglePressDropdown = false
+                            lastDismissTimeSingle = System.currentTimeMillis()
+                        },
+                        options = listOf(pressOnceText, pressTwiceText),
+                        selectedOption = singlePressAction,
+                        touchOffset = touchOffsetSingle,
+                        boxPosition = boxPositionSingle,
+                        externalHoveredIndex = parentHoveredIndexSingle,
+                        externalDragActive = parentDragActiveSingle,
+                        onOptionSelected = { option ->
+                            singlePressAction = option
+                            doublePressAction =
+                                if (option == pressOnceText) pressTwiceText else pressOnceText
+                            showSinglePressDropdown = false
+                            val bytes = if (option == pressOnceText) byteArrayOf(
+                                0x00,
+                                0x03
+                            ) else byteArrayOf(0x00, 0x02)
+                            service.aacpManager.sendControlCommand(0x24, bytes)
+                        }
+                    )
                 }
             }
             HorizontalDivider(
@@ -224,7 +321,66 @@ fun CallControlSettings() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp)
-                    .height(50.dp),
+                    .height(50.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures { offset ->
+                            val now = System.currentTimeMillis()
+                            if (showDoublePressDropdown) {
+                                showDoublePressDropdown = false
+                                lastDismissTimeDouble = now
+                            } else {
+                                if (now - lastDismissTimeDouble > 250L) {
+                                    touchOffsetDouble = offset
+                                    showDoublePressDropdown = true
+                                }
+                            }
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { offset ->
+                                val now = System.currentTimeMillis()
+                                touchOffsetDouble = offset
+                                if (!showDoublePressDropdown && now - lastDismissTimeDouble > 250L) {
+                                    showDoublePressDropdown = true
+                                }
+                                lastDismissTimeDouble = now
+                                parentDragActiveDouble = true
+                                parentHoveredIndexDouble = 0
+                            },
+                            onDrag = { change, _ ->
+                                val current = change.position
+                                val touch = touchOffsetDouble ?: current
+                                val posInPopupY = current.y - touch.y
+                                val idx = (posInPopupY / itemHeightPx).toInt()
+                                parentHoveredIndexDouble = idx
+                            },
+                            onDragEnd = {
+                                parentDragActiveDouble = false
+                                parentHoveredIndexDouble?.let { idx ->
+                                    val options = listOf(pressOnceText, pressTwiceText)
+                                    if (idx in options.indices) {
+                                        val option = options[idx]
+                                        doublePressAction = option
+                                        singlePressAction =
+                                            if (option == pressOnceText) pressTwiceText else pressOnceText
+                                        showDoublePressDropdown = false
+                                        lastDismissTimeDouble = System.currentTimeMillis()
+                                        val bytes = if (option == pressOnceText) byteArrayOf(
+                                            0x00,
+                                            0x02
+                                        ) else byteArrayOf(0x00, 0x03)
+                                        service.aacpManager.sendControlCommand(0x24, bytes)
+                                    }
+                                }
+                                parentHoveredIndexDouble = null
+                            },
+                            onDragCancel = {
+                                parentDragActiveDouble = false
+                                parentHoveredIndexDouble = null
+                            }
+                        )
+                    },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -234,13 +390,16 @@ fun CallControlSettings() {
                     color = textColor,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                Box {
+                Box(
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        boxPositionDouble = coordinates.positionInParent()
+                    }
+                ) {
                     Row(
-                        modifier = Modifier.clickable { showDoublePressDropdown = true },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (doublePressAction == "Press Once") stringResource(R.string.press_once) else stringResource(R.string.press_twice),
+                            text = doublePressAction,
                             fontSize = 16.sp,
                             color = textColor.copy(alpha = 0.8f)
                         )
@@ -251,29 +410,31 @@ fun CallControlSettings() {
                             tint = textColor.copy(alpha = 0.6f)
                         )
                     }
-                    DropdownMenu(
+
+                    DragSelectableDropdown(
                         expanded = showDoublePressDropdown,
-                        onDismissRequest = { showDoublePressDropdown = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.press_once)) },
-                            onClick = {
-                                doublePressAction = "Press Once"
-                                singlePressAction = "Press Twice"
-                                showDoublePressDropdown = false
-                                service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x02))
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.press_twice)) },
-                            onClick = {
-                                doublePressAction = "Press Twice"
-                                singlePressAction = "Press Once"
-                                showDoublePressDropdown = false
-                                service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x03))
-                            }
-                        )
-                    }
+                        onDismissRequest = {
+                            showDoublePressDropdown = false
+                            lastDismissTimeDouble = System.currentTimeMillis()
+                        },
+                        options = listOf(pressOnceText, pressTwiceText),
+                        selectedOption = doublePressAction,
+                        touchOffset = touchOffsetDouble,
+                        boxPosition = boxPositionDouble,
+                        externalHoveredIndex = parentHoveredIndexDouble,
+                        externalDragActive = parentDragActiveDouble,
+                        onOptionSelected = { option ->
+                            doublePressAction = option
+                            singlePressAction =
+                                if (option == pressOnceText) pressTwiceText else pressOnceText
+                            showDoublePressDropdown = false
+                            val bytes = if (option == pressOnceText) byteArrayOf(
+                                0x00,
+                                0x02
+                            ) else byteArrayOf(0x00, 0x03)
+                            service.aacpManager.sendControlCommand(0x24, bytes)
+                        }
+                    )
                 }
             }
         }
