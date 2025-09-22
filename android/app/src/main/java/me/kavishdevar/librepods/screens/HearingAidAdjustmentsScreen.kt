@@ -67,8 +67,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.kavishdevar.librepods.R
-import me.kavishdevar.librepods.composables.StyledSlider
 import me.kavishdevar.librepods.composables.IndependentToggle
+import me.kavishdevar.librepods.composables.StyledSlider
 import me.kavishdevar.librepods.services.ServiceManager
 import me.kavishdevar.librepods.utils.AACPManager
 import me.kavishdevar.librepods.utils.ATTHandles
@@ -505,6 +505,8 @@ private fun parseHearingAidSettingsResponse(data: ByteArray): HearingAidSettings
     if (data.size < 104) return null
     val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
 
+    buffer.get() // skip 0x02
+    buffer.get() // skip 0x02
     buffer.getShort() // skip 0x60 0x00
 
     val leftEQ = FloatArray(8)
