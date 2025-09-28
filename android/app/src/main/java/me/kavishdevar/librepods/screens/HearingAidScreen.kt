@@ -155,7 +155,7 @@ fun HearingAidScreen(navController: NavController) {
             LaunchedEffect(hearingAidEnabled.value) {
                 if (hearingAidEnabled.value && !initialLoad.value) {
                     showDialog.value = true
-                } else if (!hearingAidEnabled.value) {
+                } else if (!hearingAidEnabled.value && !initialLoad.value) {
                     aacpManager?.sendControlCommand(AACPManager.Companion.ControlCommandIdentifiers.HEARING_AID.value, byteArrayOf(0x01, 0x02))
                     aacpManager?.sendControlCommand(AACPManager.Companion.ControlCommandIdentifiers.HEARING_ASSIST_CONFIG.value, 0x02.toByte())
                     hearingAidEnabled.value = false
