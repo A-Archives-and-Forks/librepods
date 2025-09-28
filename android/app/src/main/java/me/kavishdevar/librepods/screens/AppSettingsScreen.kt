@@ -173,16 +173,6 @@ fun AppSettingsScreen(navController: NavController) {
         mutableStateOf(sharedPreferences.getBoolean("use_alternate_head_tracking_packets", false))
     }
 
-    val bleOnlyMode = remember {
-        mutableStateOf(sharedPreferences.getBoolean("ble_only_mode", false))
-    }
-
-    LaunchedEffect(Unit) {
-        if (!sharedPreferences.contains("ble_only_mode")) {
-            sharedPreferences.edit { putBoolean("ble_only_mode", false) }
-        }
-    }
-
     fun validateHexInput(input: String): Boolean {
         val hexPattern = Regex("^[0-9a-fA-F]{32}$")
         return hexPattern.matches(input)

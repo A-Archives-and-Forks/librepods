@@ -131,7 +131,6 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 lateinit var serviceConnection: ServiceConnection
 lateinit var connectionStatusReceiver: BroadcastReceiver
 
-@ExperimentalHazeMaterialsApi
 @ExperimentalMaterial3Api
 class MainActivity : ComponentActivity() {
     companion object {
@@ -427,7 +426,6 @@ fun Main() {
     }
 }
 
-@ExperimentalHazeMaterialsApi
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PermissionsScreen(

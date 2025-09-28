@@ -427,7 +427,6 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
                 if (!contains("qs_click_behavior")) putString("qs_click_behavior", "cycle")
                 if (!contains("name")) putString("name", "AirPods")
-                if (!contains("ble_only_mode")) putBoolean("ble_only_mode", false)
 
                 if (!contains("left_single_press_action")) putString(
                     "left_single_press_action",
@@ -612,7 +611,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     }
 
                     Log.d("AirPodsCrossDevice", CrossDevice.isAvailable.toString())
-                    if (!CrossDevice.isAvailable && !config.bleOnlyMode) {
+                    if (!CrossDevice.isAvailable) {
                         Log.d("AirPodsService", "${config.deviceName} connected")
                         CoroutineScope(Dispatchers.IO).launch {
                             connectToSocket(device!!)
@@ -620,12 +619,6 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         Log.d("AirPodsService", "Setting metadata")
                         setMetadatas(device!!)
                         isConnectedLocally = true
-                        macAddress = device!!.address
-                        sharedPreferences.edit {
-                            putString("mac_address", macAddress)
-                        }
-                    } else if (config.bleOnlyMode) {
-                        Log.d("AirPodsService", "BLE-only mode: skipping L2CAP connection")
                         macAddress = device!!.address
                         sharedPreferences.edit {
                             putString("mac_address", macAddress)
@@ -695,17 +688,11 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                                 if (profile == BluetoothProfile.A2DP) {
                                     val connectedDevices = proxy.connectedDevices
                                     if (connectedDevices.isNotEmpty()) {
-                                        if (!CrossDevice.isAvailable && !config.bleOnlyMode) {
+                                        if (!CrossDevice.isAvailable) {
                                             CoroutineScope(Dispatchers.IO).launch {
                                                 connectToSocket(device)
                                             }
                                             setMetadatas(device)
-                                            macAddress = device.address
-                                            sharedPreferences.edit {
-                                                putString("mac_address", macAddress)
-                                            }
-                                        } else if (config.bleOnlyMode) {
-                                            Log.d("AirPodsService", "BLE-only mode: skipping L2CAP connection")
                                             macAddress = device.address
                                             sharedPreferences.edit {
                                                 putString("mac_address", macAddress)
@@ -1143,7 +1130,6 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             conversationalAwarenessVolume = sharedPreferences.getInt("conversational_awareness_volume", 43),
             textColor = sharedPreferences.getLong("textColor", -1L),
             qsClickBehavior = sharedPreferences.getString("qs_click_behavior", "cycle") ?: "cycle",
-            bleOnlyMode = sharedPreferences.getBoolean("ble_only_mode", false),
 
             // AirPods state-based takeover
             takeoverWhenDisconnected = sharedPreferences.getBoolean("takeover_when_disconnected", true),
@@ -1188,7 +1174,6 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             "conversational_awareness_volume" -> config.conversationalAwarenessVolume = preferences.getInt(key, 43)
             "textColor" -> config.textColor = preferences.getLong(key, -1L)
             "qs_click_behavior" -> config.qsClickBehavior = preferences.getString(key, "cycle") ?: "cycle"
-            "ble_only_mode" -> config.bleOnlyMode = preferences.getBoolean(key, false)
 
             // AirPods state-based takeover
             "takeover_when_disconnected" -> config.takeoverWhenDisconnected = preferences.getBoolean(key, true)
@@ -1686,7 +1671,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        if (!::socket.isInitialized && !config.bleOnlyMode) {
+        if (!::socket.isInitialized) {
             return
         }
         if (connected && (config.bleOnlyMode || socket.isConnected)) {
