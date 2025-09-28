@@ -29,6 +29,9 @@ Most features should work with any AirPods. Currently, testing is only performed
 - **Battery Status**: Accurate battery levels
 - **Head Gestures**: Answer calls just by nodding your head
 - **Conversational Awareness**: Volume automatically lowers when you speak
+- **Hearing Aid\***
+- **Customize Transparency Mode\***
+- **Multi-device connectivity\*** (upto 2 devices)
 - **Other customizations**:
   - Rename your AirPods
   - Customize long-press actions
@@ -63,8 +66,8 @@ For installation and detailed info, see the [Linux README](/linux/README.md).
 | ![Settings 1](/android/imgs/settings-1.png) | ![Settings 2](/android/imgs/settings-2.png) | ![Debug Screen](/android/imgs/debug.png) |
 | ![Battery Notification and QS Tile for NC Mode](/android/imgs/notification-and-qs.png) | ![Popup](/android/imgs/popup.png) | ![Head Tracking and Gestures](/android/imgs/head-tracking-and-gestures.png) |
 | ![Long Press Configuration](/android/imgs/long-press.png) | ![Widget](/android/imgs/widget.png) | ![Customizations 1](/android/imgs/customizations-1.png) |
-| ![Customizations 2](/android/imgs/customizations-2.png) | ![audio-popup](/android/imgs/audio-connected-island.png) | |
-
+| ![Customizations 2](/android/imgs/customizations-2.png) | ![accessibility](/android/imgs/accessibility.png) |![transparency](/android/imgs/transparency.png) |
+|![hearing-aid](/android/imgs/hearing-aid.png) |![hearing-aid-adjustments](/android/imgs/hearing-aid-adjustments) | |
 #### Root Requirement
 
 > [!CAUTION]
@@ -79,17 +82,19 @@ This method is less intrusive and should be tried first:
 
 1. Install LSPosed, or another Xposed provider on your rooted device
 2. Download the LibrePods app from the releases section, and install it.
-3. Enable the Xposed module for the bluetooth app in your Xposed manager
-4. Follow the instructions in the app to set up the module.
-5. Open the app and connect your AirPods
+3. Enable the Xposed module for the bluetooth app in your Xposed manager.
+4. Disable unmount modules for the Bluetooth app if enabled. 
+5. Follow the instructions in the app to set up the module.
+6. Open the app and connect your AirPods
 
 ##### Method 2: Root Module (Backup Option)
 If the Xposed method doesn't work for you:
 
 1. Download the `btl2capfix.zip` module from the releases section
 2. Install it using your preferred root manager (KernelSU, Apatch, or Magisk).
-3. Reboot your device
-4. Connect your AirPods
+3. Disable Unmount modules for the Bluetooth aop if enabled. 
+4. Reboot your device
+5. Connect your AirPods
 
 ##### Method 3: Patching it yourself
 If you prefer to patch the Bluetooth stack yourself, follow these steps:
@@ -111,24 +116,19 @@ If you're unfamiliar with these steps, search for tutorials online or ask in And
 
 - When renaming your AirPods through the app, you'll need to re-pair them with your phone for the name change to take effect. This is a limitation of how Bluetooth device naming works on Android.
 
-## Development Resources
+## Bluetooth DID (Device Identification) Hook
 
-For developers interested in the protocol details, check out the [AAP Definitions](/AAP%20Definitions.md) documentation.
+Turns out, if you change the manufacturerid to that of Apple, you get access to several special features! 
 
-## CrossDevice Stuff
+### Multi-device Connectivity
 
-> [!IMPORTANT]
-> This feature is still in early development and might not work as expected. No support is provided for this feature yet.
+Upto two devices can be simultaneously connected to AirPods, for audio and control both. Seamless connection switching. The same notification shows up on Apple device when Android takes over the AirPods as if it were an Apple device ("Move to iPhone"). Android also shows a popup when the other device takes over. 
 
-### Features in Development
+### Accessibility Settings and Hearing Aid
 
-- **Battery Status Sync**: Get battery status on any device when you connect your AirPods to one of them
-- **Cross-device Controls**: Control your AirPods from either device when connected to one
-- **Automatic Device Switching**: Seamlessly switch between Linux and Android devices based on active audio sources
+Accessibility settings like customizing transparency mode (amplification, balance, tone, conversation boost, and ambient noise reduction), and loud sound reduction can be configured.
 
-Check out the demo below:
-
-https://github.com/user-attachments/assets/d08f8a51-cd52-458b-8e55-9b44f4d5f3ab
+The hearing aid feature can now also be used. Currently it can only be used to adjust the settings, not actually take a hearing test because it requires much more precision. It is much better to use an already available audiogram result. 
 
 ## Star History
 
