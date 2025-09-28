@@ -102,7 +102,6 @@ fun AirPodsSettingsScreen(dev: BluetoothDevice?, service: AirPodsService,
     var isLocallyConnected by remember { mutableStateOf(isConnected) }
     var isRemotelyConnected by remember { mutableStateOf(isRemotelyConnected) }
     val sharedPreferences = LocalContext.current.getSharedPreferences("settings", MODE_PRIVATE)
-    val bleOnlyMode = sharedPreferences.getBoolean("ble_only_mode", false)
     var device by remember { mutableStateOf(dev) }
     var deviceName by remember {
         mutableStateOf(
@@ -236,78 +235,60 @@ fun AirPodsSettingsScreen(dev: BluetoothDevice?, service: AirPodsService,
                 BatteryView(service = service)
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Show BLE-only mode indicator
-                if (bleOnlyMode) {
-                    Text(
-                        text = "BLE-only mode - advanced features disabled",
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = (if (isSystemInDarkTheme()) Color.White else Color.Black).copy(alpha = 0.6f),
-                            fontFamily = FontFamily(Font(R.font.sf_pro))
-                        ),
-                        modifier = Modifier.padding(8.dp, bottom = 16.dp)
-                    )
-                }
+                NavigationButton(
+                    to = "rename",
+                    name = stringResource(R.string.name),
+                    currentState = deviceName.text,
+                    navController = navController,
+                    independent = true
+                )
 
-                // Only show name field when not in BLE-only mode
-                if (!bleOnlyMode) {
-                    NavigationButton(
-                        to = "rename",
-                        name = stringResource(R.string.name),
-                        currentState = deviceName.text,
-                        navController = navController,
-                        independent = true
-                    )
+                Spacer(modifier = Modifier.height(32.dp))
+                NavigationButton(to = "hearing_aid", stringResource(R.string.hearing_aid), navController)
 
-                    Spacer(modifier = Modifier.height(32.dp))
-                    NavigationButton(to = "hearing_aid", stringResource(R.string.hearing_aid), navController)
+                Spacer(modifier = Modifier.height(16.dp))
+                NoiseControlSettings(service = service)
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    NoiseControlSettings(service = service)
+                Spacer(modifier = Modifier.height(16.dp))
+                PressAndHoldSettings(navController = navController)
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    PressAndHoldSettings(navController = navController)
+                Spacer(modifier = Modifier.height(16.dp))
+                CallControlSettings(hazeState = hazeState)
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    CallControlSettings(hazeState = hazeState)
+                // camera control goes here, airpods side is done, i just need to figure out how to listen to app open/close events
 
-                    // camera control goes here, airpods side is done, i just need to figure out how to listen to app open/close events
+                Spacer(modifier = Modifier.height(16.dp))
+                AudioSettings(navController = navController)
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    AudioSettings(navController = navController)
+                Spacer(modifier = Modifier.height(16.dp))
+                ConnectionSettings()
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    ConnectionSettings()
+                Spacer(modifier = Modifier.height(16.dp))
+                MicrophoneSettings(hazeState)
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    MicrophoneSettings(hazeState)
+                Spacer(modifier = Modifier.height(16.dp))
+                StyledToggle(
+                    label = stringResource(R.string.sleep_detection),
+                    controlCommandIdentifier = AACPManager.Companion.ControlCommandIdentifiers.SLEEP_DETECTION_CONFIG
+                )
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    StyledToggle(
-                        label = stringResource(R.string.sleep_detection),
-                        controlCommandIdentifier = AACPManager.Companion.ControlCommandIdentifiers.SLEEP_DETECTION_CONFIG
-                    )
+                Spacer(modifier = Modifier.height(16.dp))
+                NavigationButton(to = "head_tracking", stringResource(R.string.head_gestures), navController)
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    NavigationButton(to = "head_tracking", stringResource(R.string.head_gestures), navController)
+                Spacer(modifier = Modifier.height(16.dp))
+                NavigationButton(to = "accessibility", "Accessibility", navController = navController)
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    NavigationButton(to = "accessibility", "Accessibility", navController = navController)
+                Spacer(modifier = Modifier.height(16.dp))
+                StyledToggle(
+                    label = stringResource(R.string.off_listening_mode),
+                    controlCommandIdentifier = AACPManager.Companion.ControlCommandIdentifiers.ALLOW_OFF_OPTION,
+                    description = stringResource(R.string.off_listening_mode_description)
+                )
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    StyledToggle(
-                        label = stringResource(R.string.off_listening_mode),
-                        controlCommandIdentifier = AACPManager.Companion.ControlCommandIdentifiers.ALLOW_OFF_OPTION,
-                        description = stringResource(R.string.off_listening_mode_description)
-                    )
+                // an about card- everything but the version number is unknown - will add later if i find out
 
-                    // an about card- everything but the version number is unknown - will add later if i find out
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    NavigationButton("debug", "Debug", navController)
-                }
-
+                Spacer(modifier = Modifier.height(16.dp))
+                NavigationButton("debug", "Debug", navController)
                 Spacer(Modifier.height(24.dp))
             }
         }

@@ -229,15 +229,6 @@ fun AppSettingsScreen(navController: NavController) {
                 sharedPreferences = sharedPreferences,
             )
 
-            StyledToggle(
-                title = stringResource(R.string.connection_mode),
-                label = stringResource(R.string.ble_only_mode),
-                description = stringResource(R.string.ble_only_mode_description),
-                checkedState = bleOnlyMode,
-                sharedPreferenceKey = "ble_only_mode",
-                sharedPreferences = sharedPreferences,
-            )
-
             Text(
                 text = stringResource(R.string.conversational_awareness),
                 style = TextStyle(
