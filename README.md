@@ -67,7 +67,7 @@ For installation and detailed info, see the [Linux README](/linux/README.md).
 | ![Battery Notification and QS Tile for NC Mode](/android/imgs/notification-and-qs.png) | ![Popup](/android/imgs/popup.png) | ![Head Tracking and Gestures](/android/imgs/head-tracking-and-gestures.png) |
 | ![Long Press Configuration](/android/imgs/long-press.png) | ![Widget](/android/imgs/widget.png) | ![Customizations 1](/android/imgs/customizations-1.png) |
 | ![Customizations 2](/android/imgs/customizations-2.png) | ![accessibility](/android/imgs/accessibility.png) |![transparency](/android/imgs/transparency.png) |
-|![hearing-aid](/android/imgs/hearing-aid.png) |![hearing-aid-adjustments](/android/imgs/hearing-aid-adjustments) | |
+|![hearing-aid](/android/imgs/hearing-aid.png) |![hearing-aid-adjustments](/android/imgs/hearing-aid-adjustments.png) | |
 #### Root Requirement
 
 > [!CAUTION]
