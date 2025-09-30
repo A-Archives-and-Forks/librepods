@@ -110,6 +110,7 @@ import me.kavishdevar.librepods.screens.AccessibilitySettingsScreen
 import me.kavishdevar.librepods.screens.AdaptiveStrengthScreen
 import me.kavishdevar.librepods.screens.AirPodsSettingsScreen
 import me.kavishdevar.librepods.screens.AppSettingsScreen
+import me.kavishdevar.librepods.screens.CameraControlScreen
 import me.kavishdevar.librepods.screens.DebugScreen
 import me.kavishdevar.librepods.screens.HeadTrackingScreen
 import me.kavishdevar.librepods.screens.HearingAidAdjustmentsScreen
@@ -393,6 +394,9 @@ fun Main() {
                 }
                 composable("adaptive_strength") {
                     AdaptiveStrengthScreen(navController)
+                }
+                composable("camera_control") {
+                    CameraControlScreen(navController)
                 }
             }
         }

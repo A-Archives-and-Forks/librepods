@@ -16,12 +16,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+@file:OptIn(ExperimentalEncodingApi::class)
+
 package me.kavishdevar.librepods.services
 
 
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 private const val TAG="AppListenerService"
 
@@ -35,12 +38,28 @@ val cameraPackages = setOf(
     "com.nothing.camera"
 )
 
+var cameraOpen = false
+
 class AppListenerService : AccessibilityService() {
     override fun onAccessibilityEvent(ev: AccessibilityEvent?) {
         try {
             if (ev?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 val pkg = ev.packageName?.toString() ?: return
-                Log.d(TAG, "Opened: $pkg")
+                if (pkg == "com.android.systemui") return // after camera opens, systemui is opened, probably for the privacy indicators
+                Log.d(TAG, "Package: $pkg, cameraOpen: $cameraOpen")
+                if (pkg in cameraPackages) {
+                    Log.d(TAG, "Camera app opened: $pkg")
+                    if (!cameraOpen) cameraOpen = true
+                    ServiceManager.getService()?.cameraOpened()
+                } else {
+                    if (cameraOpen) {
+                        cameraOpen = false
+                        ServiceManager.getService()?.cameraClosed()
+                    } else {
+                        Log.d(TAG, "ignoring")
+                    }
+                }
+                // Log.d(TAG, "Opened: $pkg")
             }
         } catch(e: Exception) {
             Log.e(TAG, "Error in onAccessibilityEvent: ${e.message}")

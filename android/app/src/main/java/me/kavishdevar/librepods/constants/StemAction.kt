@@ -24,7 +24,6 @@ enum class StemAction {
     PLAY_PAUSE,
     PREVIOUS_TRACK,
     NEXT_TRACK,
-    CAMERA_SHUTTER,
     DIGITAL_ASSISTANT,
     CYCLE_NOISE_CONTROL_MODES;
     companion object {

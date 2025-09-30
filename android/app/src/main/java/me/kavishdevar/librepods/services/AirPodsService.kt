@@ -189,6 +189,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
         var leftLongPressAction: StemAction = StemAction.defaultActions[StemPressType.LONG_PRESS]!!,
         var rightLongPressAction: StemAction = StemAction.defaultActions[StemPressType.LONG_PRESS]!!,
+
+        var cameraAction: AACPManager.Companion.StemPressType? = null,
     )
 
     private lateinit var config: ServiceConfig
@@ -469,6 +471,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     "right_long_press_action",
                     StemAction.defaultActions[StemPressType.LONG_PRESS]!!.name
                 )
+                if (!contains("camera_action")) putString("camera_action", "SINGLE_PRESS")
 
             }
         }
@@ -735,22 +738,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
     @Suppress("unused")
     fun cameraOpened() {
         Log.d(TAG, "Camera opened, gonna handle stem presses and take action if enabled")
-        val isCameraShutterUsed = listOf(
-            config.leftSinglePressAction,
-            config.rightSinglePressAction,
-            config.leftDoublePressAction,
-            config.rightDoublePressAction,
-            config.leftTriplePressAction,
-            config.rightTriplePressAction,
-            config.leftLongPressAction,
-            config.rightLongPressAction
-        ).any { it == StemAction.CAMERA_SHUTTER }
-
-        if (isCameraShutterUsed) {
-            Log.d(TAG, "Camera opened, setting up stem actions")
-            cameraActive = true
-            setupStemActions(isCameraActive = true)
-        }
+        cameraActive = true
+        setupStemActions()
     }
 
     @Suppress("unused")
@@ -761,27 +750,27 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
     fun isCustomAction(
         action: StemAction?,
-        default: StemAction?,
-        isCameraActive: Boolean = false
+        default: StemAction?
     ): Boolean {
-        Log.d(TAG, "Checking if action $action is custom against default $default, camera active: $isCameraActive")
-        return action != default && (action != StemAction.CAMERA_SHUTTER || isCameraActive)
+        return action != default
     }
 
-    fun setupStemActions(isCameraActive: Boolean = false) {
+    fun setupStemActions() {
         val singlePressDefault = StemAction.defaultActions[StemPressType.SINGLE_PRESS]
         val doublePressDefault = StemAction.defaultActions[StemPressType.DOUBLE_PRESS]
         val triplePressDefault = StemAction.defaultActions[StemPressType.TRIPLE_PRESS]
         val longPressDefault   = StemAction.defaultActions[StemPressType.LONG_PRESS]
 
-        val singlePressCustomized = isCustomAction(config.leftSinglePressAction, singlePressDefault, isCameraActive) ||
-            isCustomAction(config.rightSinglePressAction, singlePressDefault, isCameraActive)
-        val doublePressCustomized = isCustomAction(config.leftDoublePressAction, doublePressDefault, isCameraActive) ||
-            isCustomAction(config.rightDoublePressAction, doublePressDefault, isCameraActive)
-        val triplePressCustomized = isCustomAction(config.leftTriplePressAction, triplePressDefault, isCameraActive) ||
-            isCustomAction(config.rightTriplePressAction, triplePressDefault, isCameraActive)
-        val longPressCustomized = isCustomAction(config.leftLongPressAction, longPressDefault, isCameraActive) ||
-            isCustomAction(config.rightLongPressAction, longPressDefault, isCameraActive)
+        val singlePressCustomized = isCustomAction(config.leftSinglePressAction, singlePressDefault) ||
+            isCustomAction(config.rightSinglePressAction, singlePressDefault) ||
+            (cameraActive && config.cameraAction == StemPressType.SINGLE_PRESS)
+        val doublePressCustomized = isCustomAction(config.leftDoublePressAction, doublePressDefault) ||
+            isCustomAction(config.rightDoublePressAction, doublePressDefault)
+        val triplePressCustomized = isCustomAction(config.leftTriplePressAction, triplePressDefault) ||
+            isCustomAction(config.rightTriplePressAction, triplePressDefault)
+        val longPressCustomized = isCustomAction(config.leftLongPressAction, longPressDefault) ||
+            isCustomAction(config.rightLongPressAction, longPressDefault) ||
+            (cameraActive && config.cameraAction == StemPressType.LONG_PRESS)
         Log.d(TAG, "Setting up stem actions: " +
             "Single Press Customized: $singlePressCustomized, " +
             "Double Press Customized: $doublePressCustomized, " +
@@ -963,12 +952,14 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             override fun onStemPressReceived(stemPress: ByteArray) {
                 val (stemPressType, bud) = aacpManager.parseStemPressResponse(stemPress)
 
-                Log.d("AirPodsParser", "Stem press received: $stemPressType on $bud")
-
-                val action = getActionFor(bud, stemPressType)
-                Log.d("AirPodsParser", "$bud $stemPressType action: $action")
-
-                action?.let { executeStemAction(it) }
+                Log.d("AirPodsParser", "Stem press received: $stemPressType on $bud, cameraActive: $cameraActive, cameraAction: ${config.cameraAction}")
+                if (cameraActive && config.cameraAction != null && stemPressType == config.cameraAction) {
+                    Runtime.getRuntime().exec(arrayOf("su", "-c", "input keyevent 27"))
+                } else {
+                    val action = getActionFor(bud, stemPressType)
+                    Log.d("AirPodsParser", "$bud $stemPressType action: $action")
+                    action?.let { executeStemAction(it) }
+                }
             }
             override fun onAudioSourceReceived(audioSource: ByteArray) {
                 Log.d("AirPodsParser", "Audio source changed mac: ${aacpManager.audioSource?.mac}, type: ${aacpManager.audioSource?.type?.name}")
@@ -1024,7 +1015,6 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             StemAction.PLAY_PAUSE -> MediaController.sendPlayPause()
             StemAction.PREVIOUS_TRACK -> MediaController.sendPreviousTrack()
             StemAction.NEXT_TRACK -> MediaController.sendNextTrack()
-            StemAction.CAMERA_SHUTTER -> Runtime.getRuntime().exec(arrayOf("su", "-c", "input keyevent 27"))
             StemAction.DIGITAL_ASSISTANT -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     val intent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
@@ -1171,7 +1161,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             rightTriplePressAction = StemAction.fromString(sharedPreferences.getString("right_triple_press_action", "PREVIOUS_TRACK") ?: "PREVIOUS_TRACK")!!,
 
             leftLongPressAction = StemAction.fromString(sharedPreferences.getString("left_long_press_action", "CYCLE_NOISE_CONTROL_MODES") ?: "CYCLE_NOISE_CONTROL_MODES")!!,
-            rightLongPressAction = StemAction.fromString(sharedPreferences.getString("right_long_press_action", "DIGITAL_ASSISTANT") ?: "DIGITAL_ASSISTANT")!!
+            rightLongPressAction = StemAction.fromString(sharedPreferences.getString("right_long_press_action", "DIGITAL_ASSISTANT") ?: "DIGITAL_ASSISTANT")!!,
+
+            cameraAction = sharedPreferences.getString("camera_action", null)?.let { AACPManager.Companion.StemPressType.valueOf(it) },
         )
     }
 
@@ -1252,6 +1244,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 )!!
                 setupStemActions()
             }
+            "camera_action" -> config.cameraAction = preferences.getString(key, null)?.let { AACPManager.Companion.StemPressType.valueOf(it) }
         }
 
         if (key == "mac_address") {
@@ -1780,6 +1773,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     handleIncomingCallOnceConnected = false
                 }
             }
+
         }
     }
 

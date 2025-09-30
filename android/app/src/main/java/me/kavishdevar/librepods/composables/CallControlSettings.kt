@@ -83,8 +83,7 @@ fun CallControlSettings(hazeState: HazeState) {
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = textColor.copy(alpha = 0.6f)
-            ),
-            modifier = Modifier.padding(16.dp, bottom = 4.dp)
+            )
         )
     }
 

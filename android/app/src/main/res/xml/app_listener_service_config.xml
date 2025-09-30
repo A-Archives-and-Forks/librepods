@@ -3,4 +3,7 @@
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="50"
     android:canRetrieveWindowContent="false"
+    android:label="@string/app_listener_service_label"
+    android:description="@string/app_listener_service_description"
+    android:settingsActivity="me.kavishdevar.librepods.MainActivity"
     android:accessibilityFlags="flagReportViewIds"/>

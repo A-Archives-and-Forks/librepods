@@ -62,6 +62,16 @@ data class SelectItem(
     val enabled: Boolean = true
 )
 
+data class SelectItem2(
+    val name: String,
+    val description: String? = null,
+    val iconRes: Int? = null,
+    val selected: () -> Boolean,
+    val onClick: () -> Unit,
+    val enabled: Boolean = true
+)
+
+
 @Composable
 fun StyledSelectList(
     items: List<SelectItem>,
