@@ -282,7 +282,7 @@ class HearingAidApp(QWidget):
         self.debounce_timer = QTimer()
         self.debounce_timer.setSingleShot(True)
         self.debounce_timer.timeout.connect(self.send_settings)
-        logging.info("HearingAidApp initialized")
+        logging.info("HearingAidConfig initialized")
 
         self.init_ui()
         self.connect_att()
@@ -350,6 +350,14 @@ class HearingAidApp(QWidget):
         self.conv_checkbox = QCheckBox("Conversation Boost")
         layout.addWidget(self.conv_checkbox)
 
+        # Own Voice Amplification
+        self.own_voice_slider = QSlider(Qt.Horizontal)
+        self.own_voice_slider.setRange(0, 100)
+        self.own_voice_slider.setValue(50)
+        layout.addWidget(QLabel("Own Voice Amplification"))
+        # layout.addWidget(self.own_voice_slider) # seems to have no effect
+        
+
         # Connect signals
         for input_box in self.left_eq_inputs + self.right_eq_inputs:
             input_box.textChanged.connect(self.on_value_changed)
@@ -358,6 +366,7 @@ class HearingAidApp(QWidget):
         self.tone_slider.valueChanged.connect(self.on_value_changed)
         self.anr_slider.valueChanged.connect(self.on_value_changed)
         self.conv_checkbox.stateChanged.connect(self.on_value_changed)
+        self.own_voice_slider.valueChanged.connect(self.on_value_changed)
 
         self.setLayout(layout)
         logging.debug("UI initialized")
@@ -394,6 +403,7 @@ class HearingAidApp(QWidget):
         self.tone_slider.setValue(int(settings.left_tone * 100))
         self.anr_slider.setValue(int(settings.left_ambient_noise_reduction * 100))
         self.conv_checkbox.setChecked(settings.left_conversation_boost)
+        self.own_voice_slider.setValue(int(settings.own_voice_amplification * 100))
 
         for i, value in enumerate(settings.left_eq):
             self.left_eq_inputs[i].setText(f"{value:.2f}")
@@ -411,6 +421,7 @@ class HearingAidApp(QWidget):
         tone = self.tone_slider.value() / 100.0
         anr = self.anr_slider.value() / 100.0
         conv = self.conv_checkbox.isChecked()
+        own_voice = self.own_voice_slider.value() / 100.0
 
         left_amp = amp + (0.5 - balance) * amp * 2 if balance < 0 else amp
         right_amp = amp + (balance - 0.5) * amp * 2 if balance > 0 else amp
@@ -420,7 +431,7 @@ class HearingAidApp(QWidget):
 
         settings = HearingAidSettings(
             left_eq, right_eq, left_amp, right_amp, tone, tone,
-            conv, conv, anr, anr, amp, balance, 0.5
+            conv, conv, anr, anr, amp, balance, own_voice
         )
         threading.Thread(target=send_hearing_aid_settings, args=(self.att_manager, settings)).start()
 
@@ -430,11 +441,16 @@ class HearingAidApp(QWidget):
         event.accept()
 
 if __name__ == "__main__":
+    mac = None
     if len(sys.argv) != 2:
         logging.error("Usage: python hearing-aid-adjustments.py <MAC_ADDRESS>")
-        print("Usage: python hearing-aid-adjustments.py <MAC_ADDRESS>")
         sys.exit(1)
     mac = sys.argv[1]
+    mac_regex = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
+    import re
+    if not re.match(mac_regex, mac):
+        logging.error("Invalid MAC address format")
+        sys.exit(1)
     logging.info(f"Starting app with MAC: {mac}")
     app = QApplication(sys.argv)
     

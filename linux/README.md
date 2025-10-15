@@ -66,3 +66,13 @@ A native Linux application to control your AirPods, with support for:
   - Switch between noise control modes
   - View battery levels
   - Control playback
+
+## Hearing Aid
+
+To use hearing aid features, you need to have an audiogram. To enable/disable hearing aid, you can use the toggle in the main app. But, to adjust the settings and set the audiogram, you need to use a different script which is located in this folder as `hearing_aid.py`. You can run it with:
+
+```bash
+python3 hearing_aid.py
+```
+
+The script will load the current settings from the AirPods and allow you to adjust them. You can set the audiogram by providing the values for 8 frequencies (250Hz, 500Hz, 1kHz, 2kHz, 3kHz, 4kHz, 6kHz, 8kHz) for both left and right ears. There are also options to adjust amplification, balance, tone, ambient noise reduction, own voice amplification, and conversation boost.
