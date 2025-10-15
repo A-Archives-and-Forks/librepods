@@ -9,7 +9,7 @@ import signal
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QCheckBox, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QCheckBox, QPushButton, QLineEdit, QFormLayout, QGridLayout
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject
 
 OPCODE_READ_REQUEST = 0x0A
@@ -44,6 +44,7 @@ class ATTManager:
         logging.info("Attempting to connect to ATT socket")
         self.sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_SEQPACKET, socket.BTPROTO_L2CAP)
         self.sock.connect((self.mac_address, PSM_ATT))
+        self.sock.settimeout(0.1)
         self.running = True
         self.notification_thread = threading.Thread(target=self._listen_notifications)
         self.notification_thread.start()
@@ -53,9 +54,11 @@ class ATTManager:
         logging.info("Disconnecting from ATT socket")
         self.running = False
         if self.sock:
+            logging.info("Closing socket")
             self.sock.close()
         if self.notification_thread:
-            self.notification_thread.join()
+            logging.info("Stopping notification thread")
+            self.notification_thread.join(timeout=1.0)
         logging.info("Disconnected from ATT socket")
 
     def register_listener(self, handle, listener):
@@ -115,9 +118,14 @@ class ATTManager:
         logging.debug(f"Sent PDU: {pdu.hex()}")
 
     def _read_pdu(self):
-        data = self.sock.recv(512)
-        logging.debug(f"Received PDU: {data.hex()}")
-        return data
+        try:
+            data = self.sock.recv(512)
+            logging.debug(f"Received PDU: {data.hex()}")
+            return data
+        except socket.timeout:
+            return None
+        except:
+            raise
 
     def _read_response(self, timeout=2.0):
         try:
@@ -133,19 +141,26 @@ class ATTManager:
         while self.running:
             try:
                 pdu = self._read_pdu()
-                if len(pdu) > 0 and pdu[0] == OPCODE_HANDLE_VALUE_NTF:
-                    handle = pdu[1] | (pdu[2] << 8)
-                    value = pdu[3:]
-                    logging.debug(f"Notification for handle {handle}: {value.hex()}")
-                    if handle in self.listeners:
-                        for listener in self.listeners[handle]:
-                            listener(value)
-                else:
-                    self.responses.put(pdu)
             except:
-                logging.warning("Error in notification listener")
                 break
-        logging.info("Notification listener thread stopped")
+            if pdu is None:
+                continue
+            if len(pdu) > 0 and pdu[0] == OPCODE_HANDLE_VALUE_NTF:
+                logging.debug(f"Notification PDU received: {pdu.hex()}")
+                handle = pdu[1] | (pdu[2] << 8)
+                value = pdu[3:]
+                logging.debug(f"Notification for handle {handle}: {value.hex()}")
+                if handle in self.listeners:
+                    for listener in self.listeners[handle]:
+                        listener(value)
+            else:
+                self.responses.put(pdu)
+        logging.info("Notification listener thread stopped, trying to reconnect")
+        if self.running:
+            try:
+                self.connect()
+            except Exception as e:
+                logging.error(f"Reconnection failed: {e}")
 
 class HearingAidSettings:
     def __init__(self, left_eq, right_eq, left_amp, right_amp, left_tone, right_tone,
@@ -178,7 +193,7 @@ def parse_hearing_aid_settings(data):
     logging.info(f"Parsing hearing aid settings, starting read at offset 4, value: {buffer[offset]:02x}")
 
     left_eq = []
-    for _ in range(8):
+    for i in range(8):
         val, = struct.unpack('<f', buffer[offset:offset+4])
         left_eq.append(val)
         offset += 4
@@ -233,12 +248,16 @@ def send_hearing_aid_settings(att_manager, settings):
     buffer[2] = 0x64
 
     # Left ear
+    for i in range(8):
+        struct.pack_into('<f', buffer, 4 + i * 4, settings.left_eq[i])
     struct.pack_into('<f', buffer, 36, settings.left_amplification)
     struct.pack_into('<f', buffer, 40, settings.left_tone)
     struct.pack_into('<f', buffer, 44, 1.0 if settings.left_conversation_boost else 0.0)
     struct.pack_into('<f', buffer, 48, settings.left_ambient_noise_reduction)
 
     # Right ear
+    for i in range(8):
+        struct.pack_into('<f', buffer, 52 + i * 4, settings.right_eq[i])
     struct.pack_into('<f', buffer, 84, settings.right_amplification)
     struct.pack_into('<f', buffer, 88, settings.right_tone)
     struct.pack_into('<f', buffer, 92, 1.0 if settings.right_conversation_boost else 0.0)
@@ -273,6 +292,32 @@ class HearingAidApp(QWidget):
         self.setWindowTitle("Hearing Aid Adjustments")
         layout = QVBoxLayout()
 
+        # EQ Inputs
+        eq_layout = QGridLayout()
+        self.left_eq_inputs = []
+        self.right_eq_inputs = []
+
+        eq_labels = ["250Hz", "500Hz", "1kHz", "2kHz", "3kHz", "4kHz", "6kHz", "8kHz"]
+        eq_layout.addWidget(QLabel("Frequency"), 0, 0)
+        eq_layout.addWidget(QLabel("Left"), 0, 1)
+        eq_layout.addWidget(QLabel("Right"), 0, 2)
+
+        for i, label in enumerate(eq_labels):
+            eq_layout.addWidget(QLabel(label), i + 1, 0)
+            left_input = QLineEdit()
+            right_input = QLineEdit()
+            left_input.setPlaceholderText("Left")
+            right_input.setPlaceholderText("Right")
+            self.left_eq_inputs.append(left_input)
+            self.right_eq_inputs.append(right_input)
+            eq_layout.addWidget(left_input, i + 1, 1)
+            eq_layout.addWidget(right_input, i + 1, 2)
+
+        eq_group = QWidget()
+        eq_group.setLayout(eq_layout)
+        layout.addWidget(QLabel("Loss, in dBHL"))
+        layout.addWidget(eq_group)
+
         # Amplification
         self.amp_slider = QSlider(Qt.Horizontal)
         self.amp_slider.setRange(-100, 100)
@@ -306,6 +351,8 @@ class HearingAidApp(QWidget):
         layout.addWidget(self.conv_checkbox)
 
         # Connect signals
+        for input_box in self.left_eq_inputs + self.right_eq_inputs:
+            input_box.textChanged.connect(self.on_value_changed)
         self.amp_slider.valueChanged.connect(self.on_value_changed)
         self.balance_slider.valueChanged.connect(self.on_value_changed)
         self.tone_slider.valueChanged.connect(self.on_value_changed)
@@ -328,7 +375,11 @@ class HearingAidApp(QWidget):
                 self.emitter.update_ui.emit(settings)
                 logging.info("Initial settings loaded")
         except Exception as e:
-            logging.error(f"Connection failed: {e}")
+            if e.errno == 111:
+                logging.error("Connection refused. Try reconnecting your AirPods.")
+                sys.exit(1)
+            else:
+                logging.error(f"Connection failed: {e}")
 
     def on_notification(self, value):
         logging.debug("Notification received")
@@ -343,6 +394,11 @@ class HearingAidApp(QWidget):
         self.tone_slider.setValue(int(settings.left_tone * 100))
         self.anr_slider.setValue(int(settings.left_ambient_noise_reduction * 100))
         self.conv_checkbox.setChecked(settings.left_conversation_boost)
+
+        for i, value in enumerate(settings.left_eq):
+            self.left_eq_inputs[i].setText(f"{value:.2f}")
+        for i, value in enumerate(settings.right_eq):
+            self.right_eq_inputs[i].setText(f"{value:.2f}")
 
     def on_value_changed(self):
         logging.debug("UI value changed, starting debounce")
@@ -359,8 +415,11 @@ class HearingAidApp(QWidget):
         left_amp = amp + (0.5 - balance) * amp * 2 if balance < 0 else amp
         right_amp = amp + (balance - 0.5) * amp * 2 if balance > 0 else amp
 
+        left_eq = [float(input_box.text() or 0) for input_box in self.left_eq_inputs]
+        right_eq = [float(input_box.text() or 0) for input_box in self.right_eq_inputs]
+
         settings = HearingAidSettings(
-            [0.5]*8, [0.5]*8, left_amp, right_amp, tone, tone,
+            left_eq, right_eq, left_amp, right_amp, tone, tone,
             conv, conv, anr, anr, amp, balance, 0.5
         )
         threading.Thread(target=send_hearing_aid_settings, args=(self.att_manager, settings)).start()
