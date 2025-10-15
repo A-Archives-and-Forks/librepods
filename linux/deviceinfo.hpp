@@ -15,6 +15,7 @@ class DeviceInfo : public QObject
     Q_PROPERTY(QString batteryStatus READ batteryStatus WRITE setBatteryStatus NOTIFY batteryStatusChanged)
     Q_PROPERTY(int noiseControlMode READ noiseControlModeInt WRITE setNoiseControlModeInt NOTIFY noiseControlModeChangedInt)
     Q_PROPERTY(bool conversationalAwareness READ conversationalAwareness WRITE setConversationalAwareness NOTIFY conversationalAwarenessChanged)
+    Q_PROPERTY(bool hearingAidEnabled READ hearingAidEnabled WRITE setHearingAidEnabled NOTIFY hearingAidEnabledChanged)
     Q_PROPERTY(int adaptiveNoiseLevel READ adaptiveNoiseLevel WRITE setAdaptiveNoiseLevel NOTIFY adaptiveNoiseLevelChanged)
     Q_PROPERTY(QString deviceName READ deviceName WRITE setDeviceName NOTIFY deviceNameChanged)
     Q_PROPERTY(Battery *battery READ getBattery CONSTANT)
@@ -64,6 +65,16 @@ public:
         {
             m_conversationalAwareness = enabled;
             emit conversationalAwarenessChanged(enabled);
+        }
+    }
+
+    bool hearingAidEnabled() const { return m_hearingAidEnabled; }
+    void setHearingAidEnabled(bool enabled)
+    {
+        if (m_hearingAidEnabled != enabled)
+        {
+            m_hearingAidEnabled = enabled;
+            emit hearingAidEnabledChanged(enabled);
         }
     }
 
@@ -159,6 +170,7 @@ public:
         setNoiseControlMode(NoiseControlMode::Off);
         setBluetoothAddress("");
         getEarDetection()->reset();
+        setHearingAidEnabled(false);
     }
 
     void saveToSettings(QSettings &settings)
@@ -168,6 +180,7 @@ public:
         settings.setValue("model", static_cast<int>(model()));
         settings.setValue("magicAccIRK", magicAccIRK());
         settings.setValue("magicAccEncKey", magicAccEncKey());
+        settings.setValue("hearingAidEnabled", hearingAidEnabled());
         settings.endGroup();
     }
     void loadFromSettings(const QSettings &settings)
@@ -176,6 +189,7 @@ public:
         setModel(static_cast<AirPodsModel>(settings.value("DeviceInfo/model", (int)(AirPodsModel::Unknown)).toInt()));
         setMagicAccIRK(settings.value("DeviceInfo/magicAccIRK", QByteArray()).toByteArray());
         setMagicAccEncKey(settings.value("DeviceInfo/magicAccEncKey", QByteArray()).toByteArray());
+        setHearingAidEnabled(settings.value("DeviceInfo/hearingAidEnabled", false).toBool());
     }
 
     void updateBatteryStatus()
@@ -191,6 +205,7 @@ signals:
     void noiseControlModeChanged(NoiseControlMode mode);
     void noiseControlModeChangedInt(int mode);
     void conversationalAwarenessChanged(bool enabled);
+    void hearingAidEnabledChanged(bool enabled);
     void adaptiveNoiseLevelChanged(int level);
     void deviceNameChanged(const QString &name);
     void primaryChanged();
@@ -202,6 +217,7 @@ private:
     QString m_batteryStatus;
     NoiseControlMode m_noiseControlMode = NoiseControlMode::Transparency;
     bool m_conversationalAwareness = false;
+    bool m_hearingAidEnabled = false;
     int m_adaptiveNoiseLevel = 50;
     QString m_deviceName;
     Battery *m_battery;

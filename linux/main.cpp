@@ -42,6 +42,7 @@ class AirPodsTrayApp : public QObject {
     Q_PROPERTY(bool hideOnStart READ hideOnStart CONSTANT)
     Q_PROPERTY(DeviceInfo *deviceInfo READ deviceInfo CONSTANT)
     Q_PROPERTY(QString phoneMacStatus READ phoneMacStatus NOTIFY phoneMacStatusChanged)
+    Q_PROPERTY(bool hearingAidEnabled READ hearingAidEnabled WRITE setHearingAidEnabled NOTIFY hearingAidEnabledChanged)
 
 public:
     AirPodsTrayApp(bool debugMode, bool hideOnStart, QQmlApplicationEngine *parent = nullptr)
@@ -131,6 +132,7 @@ public:
     bool hideOnStart() const { return m_hideOnStart; }
     DeviceInfo *deviceInfo() const { return m_deviceInfo; }
     QString phoneMacStatus() const { return m_phoneMacStatus; }
+    bool hearingAidEnabled() const { return m_deviceInfo->hearingAidEnabled(); }
 
 private:
     bool debugMode;
@@ -365,6 +367,16 @@ public slots:
     {
         m_phoneMacStatus = status;
         emit phoneMacStatusChanged();
+    }
+
+    void setHearingAidEnabled(bool enabled)
+    {
+        LOG_INFO("Setting hearing aid to: " << (enabled ? "enabled" : "disabled"));
+        QByteArray packet = enabled ? AirPodsPackets::HearingAid::ENABLED
+                                    : AirPodsPackets::HearingAid::DISABLED;
+
+        writePacketToSocket(packet, "Hearing aid packet written: ");
+        m_deviceInfo->setHearingAidEnabled(enabled);
     }
 
     bool writePacketToSocket(const QByteArray &packet, const QString &logMessage)
@@ -682,6 +694,14 @@ private slots:
                 LOG_INFO("Conversational awareness state received: " << m_deviceInfo->conversationalAwareness());
             }
         }
+        // Hearing Aid state
+        else if (data.startsWith(AirPodsPackets::HearingAid::HEADER)) {
+            if (auto result = AirPodsPackets::HearingAid::parseState(data))
+            {
+                m_deviceInfo->setHearingAidEnabled(result.value());
+                LOG_INFO("Hearing aid state received: " << m_deviceInfo->hearingAidEnabled());
+            }
+        }
         // Noise Control Mode
         else if (data.size() == 11 && data.startsWith(AirPodsPackets::NoiseControl::HEADER))
         {
@@ -944,6 +964,7 @@ signals:
     void retryAttemptsChanged(int attempts);
     void oneBudANCModeChanged(bool enabled);
     void phoneMacStatusChanged();
+    void hearingAidEnabledChanged(bool enabled);
 
 private:
     QBluetoothSocket *socket = nullptr;

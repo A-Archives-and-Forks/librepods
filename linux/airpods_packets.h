@@ -107,6 +107,16 @@ namespace AirPodsPackets
         inline std::optional<bool> parseState(const QByteArray &data) { return Type::parseState(data); }
     }
 
+    // Hearing Aid
+    namespace HearingAid
+    {
+        using Type = BasicControlCommand<0x2C>;
+        static const QByteArray ENABLED = Type::ENABLED;
+        static const QByteArray DISABLED = Type::DISABLED;
+        static const QByteArray HEADER = Type::HEADER;
+        inline std::optional<bool> parseState(const QByteArray &data) { return Type::parseState(data); }
+    }
+
     // Allow Off Option
     namespace AllowOffOption
     {

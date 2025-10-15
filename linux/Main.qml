@@ -156,6 +156,13 @@ ApplicationWindow {
                     checked: airPodsTrayApp.deviceInfo.conversationalAwareness
                     onCheckedChanged: airPodsTrayApp.setConversationalAwareness(checked)
                 }
+
+                Switch {
+                    visible: airPodsTrayApp.airpodsConnected
+                    text: "Hearing Aid"
+                    checked: airPodsTrayApp.deviceInfo.hearingAidEnabled
+                    onCheckedChanged: airPodsTrayApp.setHearingAidEnabled(checked)
+                }
             }
 
             RoundButton {
