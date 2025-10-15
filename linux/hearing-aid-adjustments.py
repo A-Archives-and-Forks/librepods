@@ -354,9 +354,12 @@ class HearingAidApp(QWidget):
         self.own_voice_slider = QSlider(Qt.Horizontal)
         self.own_voice_slider.setRange(0, 100)
         self.own_voice_slider.setValue(50)
-        layout.addWidget(QLabel("Own Voice Amplification"))
+        # layout.addWidget(QLabel("Own Voice Amplification"))
         # layout.addWidget(self.own_voice_slider) # seems to have no effect
         
+        # Reset button
+        self.reset_button = QPushButton("Reset")
+        layout.addWidget(self.reset_button)
 
         # Connect signals
         for input_box in self.left_eq_inputs + self.right_eq_inputs:
@@ -367,6 +370,7 @@ class HearingAidApp(QWidget):
         self.anr_slider.valueChanged.connect(self.on_value_changed)
         self.conv_checkbox.stateChanged.connect(self.on_value_changed)
         self.own_voice_slider.valueChanged.connect(self.on_value_changed)
+        self.reset_button.clicked.connect(self.reset_settings)
 
         self.setLayout(layout)
         logging.debug("UI initialized")
@@ -434,6 +438,16 @@ class HearingAidApp(QWidget):
             conv, conv, anr, anr, amp, balance, own_voice
         )
         threading.Thread(target=send_hearing_aid_settings, args=(self.att_manager, settings)).start()
+
+    def reset_settings(self):
+        logging.debug("Resetting settings to defaults")
+        self.amp_slider.setValue(0)
+        self.balance_slider.setValue(0)
+        self.tone_slider.setValue(0)
+        self.anr_slider.setValue(50)
+        self.conv_checkbox.setChecked(False)
+        self.own_voice_slider.setValue(50)
+        self.on_value_changed()
 
     def closeEvent(self, event):
         logging.info("Closing app")
