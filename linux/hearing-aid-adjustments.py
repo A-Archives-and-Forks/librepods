@@ -38,7 +38,9 @@ class ATTManager:
         self.listeners = {}
         self.notification_thread = None
         self.running = False
-        logging.info(f"ATTManager initialized for MAC: {mac_address}")
+        # Avoid logging full MAC address to prevent sensitive data exposure
+        mac_tail = ':'.join(mac_address.split(':')[-2:]) if isinstance(mac_address, str) and ':' in mac_address else '[redacted]'
+        logging.info(f"ATTManager initialized")
 
     def connect(self):
         logging.info("Attempting to connect to ATT socket")
@@ -465,7 +467,7 @@ if __name__ == "__main__":
     if not re.match(mac_regex, mac):
         logging.error("Invalid MAC address format")
         sys.exit(1)
-    logging.info(f"Starting app with MAC: {mac}")
+    logging.info(f"Starting app")
     app = QApplication(sys.argv)
     
     def quit_app(signum, frame):
