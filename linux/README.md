@@ -1,5 +1,7 @@
 # LibrePods Linux
 
+![screenshot](imgs/main-app.png)
+
 A native Linux application to control your AirPods, with support for:
 
 - Noise Control modes (Off, Transparency, Adaptive, Noise Cancellation)
