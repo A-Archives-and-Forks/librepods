@@ -49,7 +49,7 @@ LibrePods allows you to use AirPods features that are exclusive to Apple devices
 | <details><summary>Other accessibility configs (click to expand)</summary><ul><li>Press speed</li><li>Press and Hold duration</li><li>Noise Cancellation with single AirPod</li><li>Volume control on swipe</li><li>Volume swipe speed</li></ul></details>       | 🔴     | ✅       |
 | <details><summary>Other general configs</summary><ul><li>Press and Hold to cycle between listening modes/invoke digital assistant (invoking digital assistant needs a recent firmware)</li><li>Configure call controls</li><li>Personalized volume</li><li>Loud Sound Reduction (needs <a href="#vendorid-spoofing">VendorID spoofing</a>)</li><li>Microphone side</li><li>Pause media when falling asleep (needs a recent firmware)</li><li>Enable <code>Off listening mode</code> to switch to <code>Off</code></li></ul></details>                   | 🔴     | ✅       |
 | [Head-tracked Spatial Audio](#spatial-audio)                | ❓     | ❓       |
-| [Heart Rate Monitoring](#heart-rate-monitoring)             | ⛔     | 🔴       |
+| [Heart Rate Monitoring](#heart-rate-monitoring)             | 🔴     | 🟡       |
 | [Find My](#find-my)                                         | ❓     | ❓       |
 | [High quality two-way audio](#high-quality-two-way-audio)   | 🟡     | 🟡       |
 
@@ -77,8 +77,15 @@ The app does not currently provide head tracking information to Android for the 
 
 Spatializing stereo sound is beyond this project's scope and will never be available. Many OEMs have an implementation of their own for this.
 
-## Heart Rate Monitoring (AirPods Pro 3 and later)
-This is being worked upon, check the #⁠reverse-engineering channel on the LibrePods Discord server for more information. If it is ever implemented, it will most likely need root on Android.
+## Heart Rate Monitoring
+
+### Android
+
+Available in the `android/rewrite` branch. [builds](https://github.com/librepods-org/librepods/actions/workflows/ci-android.yml?query=branch%3Aandroid%2Frewrite)
+
+### Linux
+
+Not available yet (doesn't seem like something that would be useful on a computer anyway. If you have any suggestions, create a discussion.)
 
 ## High quality two-way audio
 On iOS/iPadOS, you can continue using A2DP while AirPods send the audio stream from its microphone over AACP.
@@ -86,7 +93,7 @@ On iOS/iPadOS, you can continue using A2DP while AirPods send the audio stream f
 ### Android
 Record audio within the app using the AirPods' microphone without switching to Headset/Handsfree profile is possible. But, making this available to other apps/telephony might need root, if possible at all.
 
-Recorder is work in progress; available in `android/rewrite` branch. [builds](https://github.com/librepods-org/librepods/actions/workflows/ci-android.yml?query=branch%3Aandroid%2Frewrite)
+Recorder is work in progress; available in the `android/rewrite` branch. [builds](https://github.com/librepods-org/librepods/actions/workflows/ci-android.yml?query=branch%3Aandroid%2Frewrite)
 
 ### Linux
 
