@@ -51,12 +51,13 @@ LibrePods allows you to use AirPods features that are exclusive to Apple devices
 | [Head-tracked Spatial Audio](#spatial-audio)                | ❓     | ❓       |
 | [Heart Rate Monitoring](#heart-rate-monitoring)             | ⛔     | 🔴       |
 | [Find My](#find-my)                                         | ❓     | ❓       |
-| [High quality two-way audio](#high-quality-two-way-audio)   | 🔴     | 🔴       |
+| [High quality two-way audio](#high-quality-two-way-audio)   | 🟡     | 🟡       |
 
 | Symbol | Meaning                                                             |
 | ------ | ------------------------------------------------------------------- |
 | ✅     | Implemented and works well                                          |
 | ⚪     | Needs [VendorID spoofing](#vendorid-spoofing); use at your own risk |
+| 🟡     | Experimental/Work in progress                                       |
 | 🔴     | Not implemented yet; planned                                        |
 | ⛔     | Will not be implemented                                             |
 | ❓     | Unknown                                                             |
@@ -80,9 +81,16 @@ Spatializing stereo sound is beyond this project's scope and will never be avail
 This is being worked upon, check the #⁠reverse-engineering channel on the LibrePods Discord server for more information. If it is ever implemented, it will most likely need root on Android.
 
 ## High quality two-way audio
-On iOS/iPadOS, you can continue using A2DP while AirPods send the audio stream from its microphone over AACP. 
+On iOS/iPadOS, you can continue using A2DP while AirPods send the audio stream from its microphone over AACP.
 
-Since this needs deeper integration with audio on Android, it will most likely need root.
+### Android
+Record audio within the app using the AirPods' microphone without switching to Headset/Handsfree profile is possible. But, making this available to other apps/telephony might need root, if possible at all.
+
+Recorder is work in progress; available in `android/rewrite` branch. [builds](https://github.com/librepods-org/librepods/actions/workflows/ci-android.yml?query=branch%3Aandroid%2Frewrite)
+
+### Linux
+
+Check out [PR #655](https://github.com/librepods-org/librepods/pull/655).
 
 # Installation
 
